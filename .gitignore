@@ -3,6 +3,7 @@
 .RData
 .Ruserdata
 local
+ADMIN
 1_data/private
 3_intermediate/private
 4_output/private
