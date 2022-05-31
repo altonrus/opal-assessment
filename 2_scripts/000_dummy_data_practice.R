@@ -5,7 +5,7 @@ date: "25/05/2022"
 output: pdf_document
 ---
 
-source("./2_scripts/00_helper_functions.R")
+#source("./2_scripts/00_helper_functions.R")
 
 library(readxl)
 library(data.table)
@@ -14,8 +14,8 @@ library(ggplot2)
 library(lubridate)
 
 #Read data from excel
-opal.visit <- read_excel("Opal_dummy_data.xlsx", sheet="visit_data")
-opal.usr.list <- read_excel("Opal_dummy_data.xlsx", sheet="opal_usr_list")
+opal.visit <- read_excel("./1_data/Opal_dummy_data.xlsx", sheet="visit_data")
+opal.usr.list <- read_excel("./1_data/Opal_dummy_data.xlsx", sheet="opal_usr_list")
 
 #Shift each visit date to get previous visit and next visit
 opal.visit <- opal.visit %>%
