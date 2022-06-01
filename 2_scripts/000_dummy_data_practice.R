@@ -1,5 +1,5 @@
 ---
-title: "Opal-dummy-data-practice"
+title: "000-Opal-dummy-data-practice"
 author: "Wanjin Li"
 date: "25/05/2022"
 output: pdf_document
@@ -14,8 +14,8 @@ library(ggplot2)
 library(lubridate)
 
 #Read data from excel
-opal.visit <- read_excel("./1_data/Opal_dummy_data.xlsx", sheet="visit_data")
-opal.usr.list <- read_excel("./1_data/Opal_dummy_data.xlsx", sheet="opal_usr_list")
+opal.visit <- read_excel("1_data/Opal_dummy_data.xlsx", sheet="visit_data")
+opal.usr.list <- read_excel("1_data/Opal_dummy_data.xlsx", sheet="opal_usr_list")
 
 #Shift each visit date to get previous visit and next visit
 opal.visit <- opal.visit %>%
@@ -26,9 +26,6 @@ opal.visit <- opal.visit %>%
 setDT(opal.visit)
 setDT(opal.usr.list)
 
-#Shift each visit date to get previous visit and next visit
-#opal.visit[, last_visit_date := shift(Date, 1, type="lag", fill=NA), by = Pat_ID]
-#opal.visit[, next_visit_date := shift(Date, 1, type="lead"), by = Pat_ID]
 
 #Calculate the gaps between each visit and its previous and/or next visit
 opal.visit$days_last_visit <- as.numeric(as.Date(opal.visit$Date) - as.Date(opal.visit$last_visit_date))
@@ -119,7 +116,7 @@ visit_episodes$baseline_gap = 180
 #intervention assignment period ends after 2 visits
 join_visit_ep[, int_assign_id := fifelse(cum_visit == 2, 1, 0)] #the calendar date of the 2nd visit prior to intervention assignment period end is flagged as 1
 join_visit_ep[, int_end_date := fifelse(int_assign_id == 1, as.Date(Date)+1, as.Date(episode_start_date))] #set the end date of intervention assignment period as the following calendar date after 2 visits
-join_visit_ep[, int_dur := as.numeric(as.Date(int_end_date) - as.Date(episode_start_date))] #?
+join_visit_ep[, int_dur := as.numeric(as.Date(int_end_date) - as.Date(episode_start_date))] #? plus one day
 
 
 #Define follow-up period
@@ -235,15 +232,6 @@ compare.max.gap <- function(maxGap1, maxGap2, baselineGap, dt1, dt2){
 compare.max.gap(30, 90, 180, opal.visit, opal.usr.list)
 compare.max.gap(40, 90, 180, opal.visit, opal.usr.list)
 compare.max.gap(50, 90, 180, opal.visit, opal.usr.list)
-
-#merge_visit_ep_90 <- create.episode(90, 180, opal.visit, opal.usr.list)
-#merge_visit_ep_30 <- create.episode(30, 180, opal.visit, opal.usr.list)
-#comb_gap_30_90 <- rbind(merge_visit_ep_30, merge_visit_ep_90)
-
-#ggplot(comb_gap_30_90, aes(x=visits_per_episode, color=as.factor(max_gap))) +
-#  scale_x_continuous(breaks = seq(0, max(comb_gap_30_90$visits_per_episode), 1)) +
-#  ylab("Percentage of episodes")+
-#  stat_ecdf()
 
 
 
