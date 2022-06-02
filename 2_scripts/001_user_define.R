@@ -142,9 +142,24 @@ num_elg_usr <- length(unique(eligible_usr$Pat_ID))
 num_inelg_usr <- length(unique(ineligible_usr$Pat_ID))
 
 #count the number of overlaps that patients who are defined as eligible and ineligible in the mean time
-overlap_elg_inelg <- length(match(eligible_usr$Pat_ID, ineligible_usr$Pat_ID))
+n_overlap <- data.frame(id = numeric())
+
+k <- 1
+for (i in 1: nrow(ineligible_usr)){
+  for (j in 1: nrow(eligible_usr)){
+    if (ineligible_usr[, 1][i] == eligible_usr[, 1][j]){
+     n_overlap[k,] <- ineligible_usr[, 1][i]
+     k <- k+1
+    } else{
+      next
+    }
+  }
+}
+
+num_overlap <- nrow(unique(n_overlap))
+num_overlap
 
 #calculate the percentage of opal user discarded
-pt_usr_discard <- (num_inelg_usr - overlap_elg_inelg)/(num_usr)
+pt_usr_discard <- (num_inelg_usr - num_overlap)/(num_usr)
 pt_usr_discard
 
