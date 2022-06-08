@@ -5,6 +5,7 @@ date: "31/05/2022"
 output: pdf_document
 ---
   
+# Setup --------
 library(readxl)
 library(data.table)
 library(dplyr)
@@ -57,7 +58,8 @@ dt_ep_end[, RollDate:= ep_end_date]
 setkey(dt_ep_start, Pat_ID, "RollDate")
 setkey(dt_ep_end, Pat_ID, "RollDate")
 dt_start_end_ep <- dt_ep_start[dt_ep_end, roll=Inf, nomatch=NULL] %>%
-  filter(ep_end_date > ep_start_date) 
+  filter(ep_end_date > ep_start_date)
+
 
 #Select the first episode end date that corresponds to the first episode start date
 first_start_end_ep <- dt_start_end_ep[, head(.SD, 1), by = list(Pat_ID, ep_start_id)]
@@ -67,12 +69,6 @@ first_start_end_ep[, ep_duration:= as.numeric(ep_end_date - ep_start_date)]
 
 #drop the column RollDate
 first_start_end_ep[, RollDate:=NULL]
-
-#Calculate the total number of episodes that met the eligibility criteria
-num_episode <- first_start_end_ep[, .N]
-
-#Calculate the number of episodes > 60 days
-num_episode_gt_60d <- first_start_end_ep[ep_duration > 60][, .N]
 
 #Link the calendar date of each individual visit to the episodes
 opal.individual.visit <- opal.visit[, .(Pat_ID, Date)]
@@ -90,11 +86,6 @@ num_visit_per_ep <- join_visit_ep[, .N, by=.(Pat_ID, ep_start_id)]
 #match the number of visit to episodes by episode id
 first_start_end_ep$visits <- num_visit_per_ep$N
 
-#calculate the number of episodes having more than 3 visits
-num_episode_gt_3v <- first_start_end_ep[visits > 3][, .N]
-
-#calculate the number of episodes having more than 6 visits
-num_episode_gt_6v <- first_start_end_ep[visits > 6][, .N]
 
 
 #DEFINE INTERVENTION ASSIGNMENT PERIOD
@@ -124,9 +115,22 @@ first_start_end_ep[, int_dur := as.numeric(int_end_date - as.Date(ep_start_date)
 first_start_end_ep[, follow_up_dur := as.numeric(as.Date(ep_end_date) - follow_up_start_date)]
 
 
-#calculate the number of episodes with eligible intervention assignment periods
-first_start_end_ep[int_end_date < ep_end_date][, .N]
+#calculate the number of eligible episodes with defined intervention assignment and follow up periods
+num_episode <- first_start_end_ep[int_end_date < ep_end_date][, .N]
 
+#Calculate the number of episodes > 60 days
+num_episode_gt_60d <- first_start_end_ep[int_end_date < ep_end_date & ep_duration > 60][, .N] 
+
+#calculate the number of episodes having more than 3 visits
+num_episode_gt_3v <- first_start_end_ep[int_end_date < ep_end_date & visits > 3][, .N]
+
+#calculate the number of episodes having more than 6 visits
+num_episode_gt_6v <- first_start_end_ep[int_end_date < ep_end_date & visits > 6][, .N]
+
+#calculate summary statistics of duration of assignment and follow up periods
+sum_int_dur <- first_start_end_ep[int_end_date < ep_end_date][, as.list(summary(int_dur))]
+
+sum_fp_dur <- first_start_end_ep[int_end_date < ep_end_date][, as.list(summary(follow_up_dur))]
 
 
 #Link Opal user log in times to the episodes
@@ -143,9 +147,8 @@ login_ep <- select(login_ep, Pat_ID, Login, visits, ep_start_date, ep_end_date, 
 #Define eligible episode - assignment periods before the end of an episode
 eligible_ep <- login_ep %>% filter(int_end_date < ep_end_date)
 
-#calculate the number of eligible episode
-num_ep <- length(unique(eligible_ep$ep_start_date))
-
+#calculate the number of eligible episode with matched opal users
+num_ep_usr <- length(unique(eligible_ep$ep_start_date))
 
 
 #DEFINE ELIGIBLE AND INELIGIBLE OPAL USERS
@@ -196,8 +199,7 @@ pt_usr_discard <- (num_inelg_usr - num_overlap)/(num_usr)
 pt_usr_discard
 
 
-#######
-#Summary table
+#Summary table -----
 
 dt.summary <- data.frame(baseline_gap = numeric(),
                       max_gap = numeric(),
@@ -208,7 +210,7 @@ dt.summary <- data.frame(baseline_gap = numeric(),
                       n_episode_gt_6v = numeric(),
                       n_episode_gt_60d = numeric(),
                       int_assign_dur = double(),
-                      follow_up_dir = double())
+                      follow_up_dur = double())
 dt.summary[1,1] <- 180
 dt.summary[1,2] <- 90
 dt.summary["int_assign_rule"] <- "after 2 visits"
@@ -217,5 +219,36 @@ dt.summary[1,5] <- num_episode
 dt.summary[1,6] <- num_episode_gt_3v
 dt.summary[1,7] <- num_episode_gt_6v
 dt.summary[1,8] <- num_episode_gt_60d
+dt.summary[1,9] <- sum_int_dur$Median
+dt.summary[1,10] <- sum_fp_dur$Median
 
+###Helper functions
+
+#gen_episodes <- function(opal.vist, init_min_gap=180, max_gap = 30)
+#add_assign_period <- function(t_episodes, n_assign_visits = 2, n_assign_days = NA){
+#if (!is.na(n_assign_days) & !is.na(n_assign_days)){
+# e.g., 10 days after second visit
+#} else if (is.na(n_assign_visits)){
+#assign based on n_assign_days
+#} else {
+#based on n visit 
+#}
+#returns(t_episodes)
+#}
+
+#analyze_policy <- function(opal.vist, init_min_gap=180, max_gap = 30, 
+#                           n_assign_visits = 2, n_assign_days = NA){
+#  t_episodes <- gen_episodes()
+#  t_episodes <- add_assign_period()
+
+#Calculate summary table statistics
+#  return()
+#}
+
+#expand.grid(
+#  init_min_gap <- c(180, 365),
+#  max_gap <- c(30, 45, 60),
+#  n_assign_visits <- c(NA, 1, 2, 3),
+#  n_assign_days < - c()
+#)
 
