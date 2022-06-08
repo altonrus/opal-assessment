@@ -195,7 +195,7 @@ num_overlap <- nrow(unique(n_overlap))
 num_overlap
 
 #calculate the percentage of opal user discarded
-pt_usr_discard <- (num_inelg_usr - num_overlap)/(num_usr)
+pt_usr_discard <- (num_inelg_usr - num_overlap)/(num_ep_usr)
 pt_usr_discard
 
 
