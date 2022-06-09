@@ -104,14 +104,16 @@ join_visit_ep[, int_end_date := fifelse(int_assign_id == 1, as.Date(Date)+1, as.
 #Define follow-up period
 join_visit_ep[, follow_up_start_date := int_end_date + 1] #set the start date of follow-up period as the following calendar date after intervention assignment period ends
 
+join_visit_ep[, int_dur := as.numeric(int_end_date - as.Date(ep_start_date))]
+
 #select observations classified as the end of intervention assignment period
 select_int <- join_visit_ep[, .SD[int_dur != 0]] %>%
-  select(Pat_ID, ep_start_id, ep_end_id, int_end_date, follow_up_start_date)
+  select(Pat_ID, ep_start_id, ep_end_id, int_end_date, follow_up_start_date, int_dur)
 
 #match assignment period end date and follow up start date to episodes
 first_start_end_ep$int_end_date <- select_int$int_end_date
 first_start_end_ep$follow_up_start_date <- select_int$follow_up_start_date
-first_start_end_ep[, int_dur := as.numeric(int_end_date - as.Date(ep_start_date))] 
+first_start_end_ep$int_dur <- select_int$int_dur 
 first_start_end_ep[, follow_up_dur := as.numeric(as.Date(ep_end_date) - follow_up_start_date)]
 
 
