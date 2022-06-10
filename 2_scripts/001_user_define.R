@@ -29,7 +29,7 @@ setDT(opal.usr.list)
 opal.visit$days_last_visit <- as.numeric(as.Date(opal.visit$Date) - as.Date(opal.visit$last_visit_date))
 opal.visit$days_next_visit <- as.numeric(as.Date(opal.visit$next_visit_date) - as.Date(opal.visit$Date))
 
-##TEST OF EPISODE CREATION: MAX of MAX GAP = 90
+#TEST OF EPISODE CREATION: MAX of MAX GAP = 90 ----
 
 #Condition when an episode starts
 opal.visit[, episode_start:=fifelse(days_last_visit > 180 | is.na(last_visit_date), 1, 0, na=NA)]
@@ -88,7 +88,7 @@ first_start_end_ep$visits <- num_visit_per_ep$N
 
 
 
-#DEFINE INTERVENTION ASSIGNMENT PERIOD
+#DEFINE INTERVENTION ASSIGNMENT PERIOD----
 
 #Assign ID to each visit within an episode for each patient
 join_visit_ep[, visit_id := fifelse(Date >= ep_start_date & Date <= ep_end_date, 1, 0)] 
@@ -96,14 +96,23 @@ join_visit_ep[, visit_id := fifelse(Date >= ep_start_date & Date <= ep_end_date,
 #Count the number of visit 
 join_visit_ep[, cum_visit := cumsum(visit_id), by = .(Pat_ID, ep_start_id)]
 
+#If intervention assignment periods ends 30 days after 2 visits
+join_visit_ep[, int_end_date := fifelse(cum_visit == 2, as.Date(Date)+30, as.Date(ep_start_date))]
+
+
+#If intervention assignment period ends 30 days after the first visits
+#join_visit_ep[, int_end_date := fifelse(cum_visit == 1, as.Date(Date)+30, as.Date(ep_start_date))]
+
+
 #If intervention assignment period ends after 2 visits
 
-join_visit_ep[, int_assign_id := fifelse(cum_visit == 2, 1, 0)] #the calendar date of the 2nd visit prior to intervention assignment period end is flagged as 1
-join_visit_ep[, int_end_date := fifelse(int_assign_id == 1, as.Date(Date)+1, as.Date(ep_start_date))] #set the end date of intervention assignment period as the following calendar date after 2 visits
+#join_visit_ep[, int_assign_id := fifelse(cum_visit == 2, 1, 0)] #the calendar date of the 2nd visit prior to intervention assignment period end is flagged as 1
+#join_visit_ep[, int_end_date := fifelse(int_assign_id == 1, as.Date(Date)+1, as.Date(ep_start_date))] #set the end date of intervention assignment period as the following calendar date after 2 visits
 
 #Define follow-up period
 join_visit_ep[, follow_up_start_date := int_end_date + 1] #set the start date of follow-up period as the following calendar date after intervention assignment period ends
 
+#Calculate duration of assignment period
 join_visit_ep[, int_dur := as.numeric(int_end_date - as.Date(ep_start_date))]
 
 #select observations classified as the end of intervention assignment period
@@ -116,6 +125,7 @@ first_start_end_ep$follow_up_start_date <- select_int$follow_up_start_date
 first_start_end_ep$int_dur <- select_int$int_dur 
 first_start_end_ep[, follow_up_dur := as.numeric(as.Date(ep_end_date) - follow_up_start_date)]
 
+#Calculation of summary statistics----
 
 #calculate the number of eligible episodes with defined intervention assignment and follow up periods
 num_episode <- first_start_end_ep[int_end_date < ep_end_date][, .N]
@@ -135,7 +145,7 @@ sum_int_dur <- first_start_end_ep[int_end_date < ep_end_date][, as.list(summary(
 sum_fp_dur <- first_start_end_ep[int_end_date < ep_end_date][, as.list(summary(follow_up_dur))]
 
 
-#Link Opal user log in times to the episodes
+#Link Opal user log in times to the episodes----
 #join dates that patients became Opal users before and during an episode -> define Opal users
 opal.usr.list[, join_date := Login]
 login_ep <- opal.usr.list[first_start_end_ep, nomatch=NULL, 
@@ -153,21 +163,21 @@ eligible_ep <- login_ep %>% filter(int_end_date < ep_end_date)
 num_ep_usr <- length(unique(eligible_ep$Pat_ID))
 
 
-#DEFINE ELIGIBLE AND INELIGIBLE OPAL USERS
+#DEFINE ELIGIBLE AND INELIGIBLE OPAL USERS----
 #Use while loop to identify eligible opal user that is classified as 1
 i_patient <- 1
 while (i_patient <= dim(eligible_ep)[1]) {
-  eligible_ep[, elg_usr := fifelse(Login <= int_end_date, 1, 0)]
+  eligible_ep[, eligible_user := fifelse(Login <= int_end_date, 1, 0)]
   i_patient = i_patient+1
 }
 
 #Define eligible opal user - patients who became opal users or ever logged in opal before the assignment period ends
 eligible_usr <- eligible_ep %>% 
-  filter(elg_usr==1)
+  filter(eligible_user==1)
 
 #Define ineligible opal user - patients who became opal users or logged into opal after the assignment period ends 
 ineligible_usr <- eligible_ep %>%
-  filter(elg_usr==0)
+  filter(eligible_user==0)
 
 #count the number of eligible opal users
 num_elg_usr <- length(unique(eligible_usr$Pat_ID))
@@ -222,34 +232,4 @@ dt.summary[1,7] <- num_episode_gt_6v
 dt.summary[1,8] <- num_episode_gt_60d
 dt.summary[1,9] <- sum_int_dur$Median
 dt.summary[1,10] <- sum_fp_dur$Median
-
-###Helper functions
-
-#gen_episodes <- function(opal.vist, init_min_gap=180, max_gap = 30)
-#add_assign_period <- function(t_episodes, n_assign_visits = 2, n_assign_days = NA){
-#if (!is.na(n_assign_days) & !is.na(n_assign_days)){
-# e.g., 10 days after second visit
-#} else if (is.na(n_assign_visits)){
-#assign based on n_assign_days
-#} else {
-#based on n visit 
-#}
-#returns(t_episodes)
-#}
-
-#analyze_policy <- function(opal.vist, init_min_gap=180, max_gap = 30, 
-#                           n_assign_visits = 2, n_assign_days = NA){
-#  t_episodes <- gen_episodes()
-#  t_episodes <- add_assign_period()
-
-#Calculate summary table statistics
-#  return()
-#}
-
-#expand.grid(
-#  init_min_gap <- c(180, 365),
-#  max_gap <- c(30, 45, 60),
-#  n_assign_visits <- c(NA, 1, 2, 3),
-#  n_assign_days < - c()
-#)
 
