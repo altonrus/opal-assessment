@@ -1,5 +1,5 @@
 ---
-title: "001-Opal-dummy-data-practice"
+title: "001-user-define"
 author: "Wanjin Li"
 date: "31/05/2022"
 output: pdf_document
@@ -150,7 +150,7 @@ login_ep <- select(login_ep, Pat_ID, Login, visits, ep_start_date, ep_end_date, 
 eligible_ep <- login_ep %>% filter(int_end_date < ep_end_date)
 
 #calculate the number of eligible episode with matched opal users
-num_ep_usr <- length(unique(eligible_ep$ep_start_date))
+num_ep_usr <- length(unique(eligible_ep$Pat_ID))
 
 
 #DEFINE ELIGIBLE AND INELIGIBLE OPAL USERS
@@ -169,14 +169,13 @@ eligible_usr <- eligible_ep %>%
 ineligible_usr <- eligible_ep %>%
   filter(elg_usr==0)
 
-#Count the total number of patients who became Opal users before and duration episodes
-num_usr <- length(unique(login_ep$Pat_ID)) #but also include ineligible episodes though
-
 #count the number of eligible opal users
 num_elg_usr <- length(unique(eligible_usr$Pat_ID))
-
+num_elg_usr
 #count the number of ineligible opal users
 num_inelg_usr <- length(unique(ineligible_usr$Pat_ID))
+num_inelg_usr
+
 
 #count the number of overlaps that patients who are defined as eligible and ineligible in the mean time
 n_overlap <- data.frame(id = numeric())
