@@ -91,6 +91,7 @@ gen.episodes <- function(dt.visit, init_min_gap, max_gap){
   return(first_episodes) 
 }  
 
+t_ep <- gen.episodes(opal.visit, 100, 30)
 
 #Define intervention assignment and follow up periods
 add.assign.period <- function(dt.visit, dt.episodes, n_assign_visits, n_assign_days){
@@ -110,10 +111,21 @@ add.assign.period <- function(dt.visit, dt.episodes, n_assign_visits, n_assign_d
   #Count the number of visit 
   join_visit_ep[, cum_visit := cumsum(visit_id), by = .(Pat_ID, ep_start_id)]
   
-  #If intervention assignment period ends after 2 visits
-  
-  join_visit_ep[, int_assign_id := fifelse(cum_visit == n_assign_visits, 1, 0)] #the calendar date of the 2nd visit prior to intervention assignment period end is flagged as 1
-  join_visit_ep[, int_end_date := fifelse(int_assign_id == 1, as.Date(Date)+1, as.Date(ep_start_date))] #set the end date of intervention assignment period as the following calendar date after 2 visits
+  if (!is.na(n_assign_visits) & !is.na(n_assign_days)){
+    #If intervention assignment period ends 30 days after 2 visits
+    join_visit_ep[, int_end_date := fifelse(cum_visit == n_assign_visits, as.Date(Date)+n_assign_days, as.Date(ep_start_date))]
+    
+  }else if (!is.na(n_assign_visits)){
+    #If intervention assignment period ends after 2 visits
+    
+    join_visit_ep[, int_assign_id := fifelse(cum_visit == n_assign_visits, 1, 0)] #the calendar date of the 2nd visit prior to intervention assignment period end is flagged as 1
+    join_visit_ep[, int_end_date := fifelse(int_assign_id == 1, as.Date(Date)+1, as.Date(ep_start_date))] #set the end date of intervention assignment period as the following calendar date after 2 visits
+    
+  }else if (!is.na(n_assign_days)){
+    #If intervention assignment period ends 30 days after the first visits
+    join_visit_ep[, int_end_date := fifelse(cum_visit == 1, as.Date(Date)+n_assign_days, as.Date(ep_start_date))]
+
+  }
   
   #Define follow-up period
   join_visit_ep[, follow_up_start_date := int_end_date + 1] #set the start date of follow-up period as the following calendar date after intervention assignment period ends
@@ -134,6 +146,8 @@ add.assign.period <- function(dt.visit, dt.episodes, n_assign_visits, n_assign_d
   return(dt.episodes)
 }
 
+t_ep <- add.assign.period(opal.visit, t_ep, 2, 30)
+
 
 
 #Link Opal user log in times to the episodes
@@ -148,118 +162,141 @@ link.usr.ep <- function(dt.usr, dt.episodes){
   
   #Define eligible episode - assignment periods before the end of an episode
   eligible_ep <- login_ep %>% filter(int_end_date < ep_end_date)
-  
   return(eligible_ep)
 }
+
+t_elg_ep <- link.usr.ep(opal.usr.list, t_ep)
+nrow(t_elg_ep)
 
 
 #Define eligible and ineligible Opal users
 gen.eligible.usr <- function(dt.elg.ep){
-  #Use while loop to identify eligible opal user that is classified as 1
-  i_patient <- 1
-  while (i_patient <= dim(dt.elg.ep)[1]) {
-    dt.elg.ep[, eligible_user := fifelse(Login <= int_end_date, 1, 0)]
-    i_patient = i_patient+1
+  
+  if (nrow(dt.elg.ep) != 0){
+    #Use while loop to identify eligible opal user that is classified as 1
+    i_patient <- 1
+    while (i_patient <= dim(dt.elg.ep)[1]) {
+      dt.elg.ep[, eligible_user := fifelse(Login <= int_end_date, 1, 0)]
+      i_patient = i_patient+1
+    }
+    
+  }else{
+    print("no eligible episodes")
   }
   return(dt.elg.ep)
 }
 
+t_elg_ep2 <- gen.eligible.usr(t_elg_ep)
+nrow(t_elg_ep2)
 
 #Calculate summary statistics
 summary.stats <- function(dt.episodes, dt.elg.ep){
   
-  #calculate the number of eligible episodes with defined intervention assignment and follow up periods
-  num_episode <- dt.episodes[int_end_date < ep_end_date][, .N]
-  
-  #Calculate the number of episodes > 60 days
-  num_episode_gt_60d <- dt.episodes[int_end_date < ep_end_date & ep_duration > 60][, .N] 
-  
-  #calculate the number of episodes having more than 3 visits
-  num_episode_gt_3v <- dt.episodes[int_end_date < ep_end_date & visits > 3][, .N]
-  
-  #calculate the number of episodes having more than 6 visits
-  num_episode_gt_6v <- dt.episodes[int_end_date < ep_end_date & visits > 6][, .N]
-  
-  #calculate summary statistics of duration of assignment and follow up periods
-  summary_int_dur <- dt.episodes[int_end_date < ep_end_date][, as.list(summary(int_dur))]
-  
-  summary_fp_dur <- dt.episodes[int_end_date < ep_end_date][, as.list(summary(follow_up_dur))]
-  
-  ##Count the total number of patients who became Opal users before and duration episodes
-  num_usr <- length(unique(dt.elg.ep$Pat_ID))
-  
-  #Define eligible opal user - patients who became opal users or ever logged in opal before the assignment period ends
-  eligible_usr <- dt.elg.ep %>% 
-    filter(eligible_user==1)
-  
-  #Define ineligible opal user - patients who became opal users or logged into opal after the assignment period ends 
-  ineligible_usr <- dt.elg.ep %>%
-    filter(eligible_user==0)
-  
-  #count the number of eligible opal users
-  num_elg_usr <- length(unique(eligible_usr$Pat_ID))
-  
-  #count the number of ineligible opal users
-  num_inelg_usr <- length(unique(ineligible_usr$Pat_ID))
-  
-  #count the number of overlaps that patients who are defined as eligible and ineligible in the mean time
-  n_overlap <- data.frame(id = numeric())
-  
-  k <- 1
-  for (i in 1: nrow(ineligible_usr)){
-    for (j in 1: nrow(eligible_usr)){
-      if (ineligible_usr[, 1][i] == eligible_usr[, 1][j]){
-        n_overlap[k,] <- ineligible_usr[, 1][i]
-        k <- k+1
-      } else{
-        next
+    #calculate the number of eligible episodes with defined intervention assignment and follow up periods
+    num_episode <- dt.episodes[int_end_date < ep_end_date][, .N]
+    
+    #Calculate the number of episodes > 60 days
+    num_episode_gt_60d <- dt.episodes[int_end_date < ep_end_date & ep_duration > 60][, .N] 
+    
+    #calculate the number of episodes having more than 3 visits
+    num_episode_gt_3v <- dt.episodes[int_end_date < ep_end_date & visits > 3][, .N]
+    
+    #calculate the number of episodes having more than 6 visits
+    num_episode_gt_6v <- dt.episodes[int_end_date < ep_end_date & visits > 6][, .N]
+    
+    #calculate summary statistics of duration of assignment and follow up periods
+    summary_int_dur <- dt.episodes[int_end_date < ep_end_date][, as.list(summary(int_dur))]
+    
+    summary_fp_dur <- dt.episodes[int_end_date < ep_end_date][, as.list(summary(follow_up_dur))]
+    
+    if (nrow(dt.elg.ep) != 0){
+      ##Count the total number of patients who became Opal users before and duration episodes
+      num_usr <- length(unique(dt.elg.ep$Pat_ID))
+      
+      #Define eligible opal user - patients who became opal users or ever logged in opal before the assignment period ends
+      eligible_usr <- dt.elg.ep %>% 
+        filter(eligible_user==1)
+      
+      #Define ineligible opal user - patients who became opal users or logged into opal after the assignment period ends 
+      ineligible_usr <- dt.elg.ep %>%
+        filter(eligible_user==0)
+      
+      #count the number of eligible opal users
+      num_elg_usr <- length(unique(eligible_usr$Pat_ID))
+      
+      #count the number of ineligible opal users
+      num_inelg_usr <- length(unique(ineligible_usr$Pat_ID))
+      
+      #count the number of overlaps that patients who are defined as eligible and ineligible in the mean time
+      n_overlap <- data.frame(id = numeric())
+      
+      k <- 1
+      for (i in 1: nrow(ineligible_usr)){
+        for (j in 1: nrow(eligible_usr)){
+          if (ineligible_usr[, 1][i] == eligible_usr[, 1][j]){
+            n_overlap[k,] <- ineligible_usr[, 1][i]
+            k <- k+1
+          } else{
+            next
+          }
+        }
       }
+      
+      num_overlap <- nrow(unique(n_overlap))
+      
+      #calculate the percentage of opal user discarded
+      pt_usr_discard <- (num_inelg_usr - num_overlap)/(num_usr)
+      
+      
+    }else {
+      num_usr <- NA
+      num_elg_usr <- NA
+      num_inelg_usr <- NA
+      num_overlap <- NA
+      pt_usr_discard <- NA
+      
     }
-  }
-  
-  num_overlap <- nrow(unique(n_overlap))
-  
-  #calculate the percentage of opal user discarded
-  pt_usr_discard <- (num_inelg_usr - num_overlap)/(num_usr)
-
-  
-  #create a summary statistic table
-  df.summary.stats <- data.frame(pct_usr_discarded = numeric(),
-                           n_episode = numeric(),
-                           n_episode_gt_3v = numeric(),
-                           n_episode_gt_6v = numeric(),
-                           n_episode_gt_60d = numeric(),
-                           int_assign_dur = numeric(),
-                           follow_up_dur = numeric(),
-                           n_elg_usr = numeric(),
-                           n_inelg_usr = numeric(),
-                           n_overlap = numeric(),
-                           n_usr = numeric())
-  df.summary.stats[1,1] <- round(pt_usr_discard,2)
-  df.summary.stats[1,2] <- num_episode
-  df.summary.stats[1,3] <- num_episode_gt_3v
-  df.summary.stats[1,4] <- num_episode_gt_6v
-  df.summary.stats[1,5] <- num_episode_gt_60d
-  df.summary.stats[1,6] <- summary_int_dur$Median
-  df.summary.stats[1,7] <- summary_fp_dur$Median
-  df.summary.stats[1,8] <- num_elg_usr
-  df.summary.stats[1,9] <- num_inelg_usr
-  df.summary.stats[1,10] <- num_overlap
-  df.summary.stats[1,11] <- num_usr
-  
-  return(df.summary.stats)
-  
+    
+    #create a summary statistic table
+    df.summary.stats <- data.frame(pct_usr_discarded = numeric(),
+                                   n_episode = numeric(),
+                                   n_episode_gt_3v = numeric(),
+                                   n_episode_gt_6v = numeric(),
+                                   n_episode_gt_60d = numeric(),
+                                   int_assign_dur = numeric(),
+                                   follow_up_dur = numeric(),
+                                   n_elg_usr = numeric(),
+                                   n_inelg_usr = numeric(),
+                                   n_overlap = numeric(),
+                                   n_usr = numeric())
+    df.summary.stats[1,1] <- round(pt_usr_discard,2)
+    df.summary.stats[1,2] <- num_episode
+    df.summary.stats[1,3] <- num_episode_gt_3v
+    df.summary.stats[1,4] <- num_episode_gt_6v
+    df.summary.stats[1,5] <- num_episode_gt_60d
+    df.summary.stats[1,6] <- summary_int_dur$Median
+    df.summary.stats[1,7] <- summary_fp_dur$Median
+    df.summary.stats[1,8] <- num_elg_usr
+    df.summary.stats[1,9] <- num_inelg_usr
+    df.summary.stats[1,10] <- num_overlap
+    df.summary.stats[1,11] <- num_usr
+    
+    return(df.summary.stats)
+    
 }
 
+t_elg_ep2_sumstats <- summary.stats(t_ep, t_elg_ep2)
 
-####Loop----
+
+# Loop----
 
 comb_param <- expand.grid(
   init_min_gap <- c(100, 180),
   max_gap <- c(30, 60, 90),
-  n_assign_visits <- c(2)
+  n_assign_visits <- c(2),
+  n_assign_days <- c(30)
 )
-colnames(comb_param) <- c("init_min_gap","max_gap", "assign_visits")
+colnames(comb_param) <- c("init_min_gap","max_gap", "assign_visits","assign_days")
 comb_param
 
 summary_table <- data.frame(pct_usr_discarded = numeric(),
@@ -276,17 +313,17 @@ summary_table <- data.frame(pct_usr_discarded = numeric(),
 
 for (i in 1: nrow(comb_param)){
   t_episodes <- gen.episodes(opal.visit, comb_param[i,1],comb_param[i,2])
-  t_episodes <- add.assign.period(opal.visit, t_episodes, comb_param[i,3], NA)
+  t_episodes <- add.assign.period(opal.visit, t_episodes, comb_param[i,3], comb_param[i,4])
   t_elg_episodes <- link.usr.ep(opal.usr.list, t_episodes)
-  t_elg_usr <- gen.eligible.usr(t_elg_episodes)
-  t_summary_stats <- summary.stats(t_episodes, t_elg_usr)
+  t_elg_episodes <- gen.eligible.usr(t_elg_episodes)
+  t_summary_stats <- summary.stats(t_episodes, t_elg_episodes)
   summary_table <- rbind(summary_table, t_summary_stats)
   
 }
 
-summary_table
+test_sum <- summary_table
 
-cbind(comb_param, summary_table)
+merge_sum_stats <- cbind(comb_param, summary_table)
 
 
 ###test ------
