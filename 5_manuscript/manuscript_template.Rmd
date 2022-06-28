@@ -65,8 +65,8 @@ gen_tab_sourcestr <- function(sources_raw){
 ```
 
 ```{r}
-df_samp <- read_excel("../1_data/tables.xlsx", sheet = "sample")
-sourcestr_t_samp <- gen_tab_sourcestr(df_samp$Source)
+# df_samp <- read_excel("../1_data/tables.xlsx", sheet = "sample")
+# sourcestr_t_samp <- gen_tab_sourcestr(df_samp$Source)
 ```
 
 # Abstract
@@ -89,17 +89,18 @@ sourcestr_t_samp <- gen_tab_sourcestr(df_samp$Source)
 
 # Methods
 
-> See `r run_reference("t-sample")` `r sourcestr_t_samp` and \@ref(tab:t-sample-2).
+
+
+## Data
 
 ## Cohort development
 
-## Outcomes estimation
+## Propensity score matching
 
-## Costing
+## Outcomes estimation
 
 ## Survey
 
-## Check-in process
 
 <br>
 
@@ -143,36 +144,36 @@ sourcestr_t_samp <- gen_tab_sourcestr(df_samp$Source)
 # Tables
 
 ```{r}
-tab_num <- run_autonum(seq_id = "tab", 
-                       pre_label = "Table ", 
-                       bkm="t-sample",
-                       bkm_all = TRUE,
-                       prop = fp_text(bold=TRUE, underlined = TRUE))
-
-
-t_samp <- as_flextable(as_grouped_data(df_samp,
-                                              groups = "subhead"))
-t_samp <- compose(t_samp, i = ~ !is.na(subhead), j = "col1",
-              value = as_paragraph(as_chunk(subhead)))
-
-t_samp <- fontsize(t_samp, size = 10, part = "all")
-t_samp <- font(t_samp, fontname = "Times", part = "all")
-t_samp <- theme_box(t_samp)
-t_samp <- bg(t_samp, bg = "#EAEAEA", part = "header")
-t_samp <- width(t_samp, 1, 1.7)
-t_samp <- bg(t_samp, i = c(1, 4), bg = "#DDDDDD", part = "body")
-t_samp <- bold(t_samp, i = c(1, 4), part = "body")
-t_samp <- align(t_samp, align = "left", part = "all")
-t_samp <- set_caption(t_samp,
-                      "This is a sample table.",
-                      autonum = tab_num)
-# t_samp <- footnote(t_samp, i=1, j=1, part="header",ref_symbols ="1",
-#                          value=as_paragraph("This is a footnote."))
-t_samp <-  colformat_md(t_samp, j=2:4, part="body",
-                        pandoc_args = c('--csl', 'refs-in-tables.csl'))
-
-
-t_samp
+# tab_num <- run_autonum(seq_id = "tab", 
+#                        pre_label = "Table ", 
+#                        bkm="t-sample",
+#                        bkm_all = TRUE,
+#                        prop = fp_text(bold=TRUE, underlined = TRUE))
+# 
+# 
+# t_samp <- as_flextable(as_grouped_data(df_samp,
+#                                               groups = "subhead"))
+# t_samp <- compose(t_samp, i = ~ !is.na(subhead), j = "col1",
+#               value = as_paragraph(as_chunk(subhead)))
+# 
+# t_samp <- fontsize(t_samp, size = 10, part = "all")
+# t_samp <- font(t_samp, fontname = "Times", part = "all")
+# t_samp <- theme_box(t_samp)
+# t_samp <- bg(t_samp, bg = "#EAEAEA", part = "header")
+# t_samp <- width(t_samp, 1, 1.7)
+# t_samp <- bg(t_samp, i = c(1, 4), bg = "#DDDDDD", part = "body")
+# t_samp <- bold(t_samp, i = c(1, 4), part = "body")
+# t_samp <- align(t_samp, align = "left", part = "all")
+# t_samp <- set_caption(t_samp,
+#                       "This is a sample table.",
+#                       autonum = tab_num)
+# # t_samp <- footnote(t_samp, i=1, j=1, part="header",ref_symbols ="1",
+# #                          value=as_paragraph("This is a footnote."))
+# t_samp <-  colformat_md(t_samp, j=2:4, part="body",
+#                         pandoc_args = c('--csl', 'refs-in-tables.csl'))
+# 
+# 
+# t_samp
 ```
 
 ##### 
@@ -180,17 +181,17 @@ t_samp
 # Figures
 
 ```{r fig.width=5, fig.height=1}
-fig_num <- run_autonum(seq_id = "fig",
-                       pre_label = "Figure ",
-                       bkm="f-sample",
-                       bkm_all = TRUE,
-                       prop = fp_text(bold=TRUE, underlined = TRUE))
-
-knitr::include_graphics("../4_output/figs/figure.png")
-
-block_caption("This is a figure caption.", 
-              style = "Image Caption", 
-              autonum = fig_num)
+# fig_num <- run_autonum(seq_id = "fig",
+#                        pre_label = "Figure ",
+#                        bkm="f-sample",
+#                        bkm_all = TRUE,
+#                        prop = fp_text(bold=TRUE, underlined = TRUE))
+# 
+# knitr::include_graphics("../4_output/figs/figure.png")
+# 
+# block_caption("This is a figure caption.", 
+#               style = "Image Caption", 
+#               autonum = fig_num)
 
 ```
 
@@ -207,30 +208,30 @@ block_caption("This is a figure caption.",
 # Supplemental tables
 
 ```{r}
-stab_num <- run_autonum(seq_id = "stab", 
-                       pre_label = "Table S", 
-                       bkm="t-sample-2",
-                       bkm_all = TRUE,
-                       prop = fp_text(bold=TRUE, underlined = TRUE))
-
-t_samp <- as_flextable(as_grouped_data(read_excel("../1_data/tables.xlsx", sheet = "sample"),
-                                              groups = "subhead"))
-t_samp <- compose(t_samp, i = ~ !is.na(subhead), j = "col1",
-              value = as_paragraph(as_chunk(subhead)))
-t_samp <- fontsize(t_samp, size = 10, part = "all")
-t_samp <- font(t_samp, fontname = "Times", part = "all")
-t_samp <- theme_box(t_samp)
-t_samp <- bg(t_samp, bg = "#EAEAEA", part = "header")
-t_samp <- width(t_samp, 1, 1.7)
-t_samp <- bg(t_samp, i = c(1, 4), bg = "#DDDDDD", part = "body")
-t_samp <- bold(t_samp, i = c(1, 4), part = "body")
-t_samp <- set_caption(t_samp,
-                      "This is a sample table.",
-                      autonum = stab_num)
-t_samp <- align(t_samp, align = "left", part = "all")
-t_samp <-  colformat_md(t_samp, j=2:4, part="body")
-
-t_samp
+# stab_num <- run_autonum(seq_id = "stab", 
+#                        pre_label = "Table S", 
+#                        bkm="t-sample-2",
+#                        bkm_all = TRUE,
+#                        prop = fp_text(bold=TRUE, underlined = TRUE))
+# 
+# t_samp <- as_flextable(as_grouped_data(read_excel("../1_data/tables.xlsx", sheet = "sample"),
+#                                               groups = "subhead"))
+# t_samp <- compose(t_samp, i = ~ !is.na(subhead), j = "col1",
+#               value = as_paragraph(as_chunk(subhead)))
+# t_samp <- fontsize(t_samp, size = 10, part = "all")
+# t_samp <- font(t_samp, fontname = "Times", part = "all")
+# t_samp <- theme_box(t_samp)
+# t_samp <- bg(t_samp, bg = "#EAEAEA", part = "header")
+# t_samp <- width(t_samp, 1, 1.7)
+# t_samp <- bg(t_samp, i = c(1, 4), bg = "#DDDDDD", part = "body")
+# t_samp <- bold(t_samp, i = c(1, 4), part = "body")
+# t_samp <- set_caption(t_samp,
+#                       "This is a sample table.",
+#                       autonum = stab_num)
+# t_samp <- align(t_samp, align = "left", part = "all")
+# t_samp <-  colformat_md(t_samp, j=2:4, part="body")
+# 
+# t_samp
 ```
 
 ##### 
@@ -243,17 +244,17 @@ t_samp
 
 ```{r, fig.width=5, fig.height=1}
 
-sfig_num <- run_autonum(seq_id = "sfig", 
-                       pre_label = "Figure S", 
-                       bkm="f-sample-2",
-                       bkm_all = TRUE,
-                       prop = fp_text(bold=TRUE, underlined = TRUE))
-
-knitr::include_graphics("../4_output/figs/figure.png")
-
-
-
-block_caption("A figure caption.", 
-              style = "Image Caption", 
-              autonum = sfig_num)
+# sfig_num <- run_autonum(seq_id = "sfig", 
+#                        pre_label = "Figure S", 
+#                        bkm="f-sample-2",
+#                        bkm_all = TRUE,
+#                        prop = fp_text(bold=TRUE, underlined = TRUE))
+# 
+# knitr::include_graphics("../4_output/figs/figure.png")
+# 
+# 
+# 
+# block_caption("A figure caption.", 
+#               style = "Image Caption", 
+#               autonum = sfig_num)
 ```
